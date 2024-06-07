@@ -1,11 +1,9 @@
 from fastapi import FastAPI, APIRouter, Depends, UploadFile, status ,File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse ,FileResponse
 from helpers.config import get_settings ,Settings
 from models.enums.ResponseEnum import ResponseSignal
 from controllers import ConverterController
-from fastapi.responses import FileResponse
 import os
-import PyPDF2
 import tempfile
 from PIL import Image
 import io
@@ -16,20 +14,7 @@ converter_router = APIRouter(
     tags=["api_v1" , "converter"],
 )
 
-def extract_text_from_pdf(pdf_path):
-    try:
-        with open(pdf_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
-            text = ""
-            
-            for page_num in range(len(reader.pages)):
-                page = reader.pages[page_num]
-                text += page.extract_text() + "\n"  # Adding newline for better readability
-                
-        return text
-    except Exception as e:
-        print(f"Error reading PDF file: {e}")
-        return None
+
 
 
 
@@ -57,7 +42,7 @@ async def pdf_to_text(file : UploadFile = File(...)):
             temp_file.write(content)
 
         # Extract text from the PDF
-        extracted_text = extract_text_from_pdf(temp_pdf_path)
+        extracted_text = ConverterController().extract_text_from_pdf(temp_pdf_path)
         if not extracted_text:
                     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
                                      content={
@@ -78,24 +63,3 @@ async def pdf_to_text(file : UploadFile = File(...)):
             content={"message": ResponseSignal.PROCESSING_FAILED.value , "error":str(e)}
         )
 
-@converter_router.post("/image-compress/{compress_percentage}")
-async def compress_image(compress_percentage : int,file: UploadFile = File(...)):
-    try:
-            # Read image file
-        image = Image.open(file.file)
-        
-        # Compress the image
-        buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=compress_percentage)  # Quality from 0 to 100, 20 is fairly low quality
-        
-        buffer.seek(0)
-        
-        # Save or return the compressed image
-        return FileResponse(buffer, media_type="image/jpeg", filename=f"compressed_{file.filename}",
-                            status_code=status.HTTP_200_OK)
-    
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": ResponseSignal.PROCESSING_FAILED.value , "error":str(e)}
-        )
