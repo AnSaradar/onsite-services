@@ -35,13 +35,11 @@ async def pdf_to_text(file : UploadFile = File(...)):
     #     return JSONResponse(status_code=status.HTTP_200_OK,content={"message":result_signal})
      
     try:
-        # Save the uploaded PDF file temporarily
         temp_pdf_path = f"/tmp/{file.filename}"
         with open(temp_pdf_path, "wb") as temp_file:
             content = await file.read()
             temp_file.write(content)
 
-        # Extract text from the PDF
         extracted_text = ConverterController().extract_text_from_pdf(temp_pdf_path)
         if not extracted_text:
                     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,12 +47,10 @@ async def pdf_to_text(file : UploadFile = File(...)):
                                              "signal" : ResponseSignal.PROCESSING_FAILED.value
                                      })
 
-        # Save the extracted text to a temporary text file
         temp_txt_path = f"/tmp/{file.filename}.txt"
         with open(temp_txt_path, "w") as temp_file:
             temp_file.write(extracted_text)
 
-        # Return the text file as a response
         return FileResponse(temp_txt_path, filename=f"{file.filename}.txt" , status_code=status.HTTP_200_OK)
     
     except Exception as e:
